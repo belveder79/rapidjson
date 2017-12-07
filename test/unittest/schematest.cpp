@@ -1322,6 +1322,32 @@ TEST(SchemaValidator, Issue728_AllOfRef) {
     VALIDATE(s, "{\"key1\": \"abc\", \"key2\": \"def\"}", true);
 }
 
+TEST(SchemaValidator, Issue825) {
+    Document sd;
+    sd.Parse("{\"type\": \"object\", \"additionalProperties\": false, \"patternProperties\": {\"^i\": { \"type\": \"string\" } } }");
+    SchemaDocument s(sd);
+    VALIDATE(s, "{ \"item\": \"hello\" }", true);
+}
+
+TEST(SchemaValidator, Issue1017_allOfHandler) {
+    Document sd;
+    sd.Parse("{\"allOf\": [{\"type\": \"object\",\"properties\": {\"cyanArray2\": {\"type\": \"array\",\"items\": { \"type\": \"string\" }}}},{\"type\": \"object\",\"properties\": {\"blackArray\": {\"type\": \"array\",\"items\": { \"type\": \"string\" }}},\"required\": [ \"blackArray\" ]}]}");
+    SchemaDocument s(sd);
+    StringBuffer sb;
+    Writer<StringBuffer> writer(sb);
+    GenericSchemaValidator<SchemaDocument, Writer<StringBuffer> > validator(s, writer);
+    EXPECT_TRUE(validator.StartObject());
+    EXPECT_TRUE(validator.Key("cyanArray2", 10, false));
+    EXPECT_TRUE(validator.StartArray());    
+    EXPECT_TRUE(validator.EndArray(0));    
+    EXPECT_TRUE(validator.Key("blackArray", 10, false));
+    EXPECT_TRUE(validator.StartArray());    
+    EXPECT_TRUE(validator.EndArray(0));    
+    EXPECT_TRUE(validator.EndObject(0));
+    EXPECT_TRUE(validator.IsValid());
+    EXPECT_STREQ("{\"cyanArray2\":[],\"blackArray\":[]}", sb.GetString());
+}
+
 #ifdef __clang__
 RAPIDJSON_DIAG_POP
 #endif
